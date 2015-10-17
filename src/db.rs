@@ -1,5 +1,7 @@
 use postgres::{Connection};
 
+use std::sync::{Arc, Mutex};
+
 pub fn insert(db: &Connection, name: &str, phone: &str) -> ::postgres::Result<u64> {
     db.execute("INSERT INTO phonebook VALUES (default, $1, $2)", &[&name, &phone])
 }
@@ -12,9 +14,9 @@ pub fn remove(db: &Connection, ids: &[i32]) -> ::postgres::Result<u64> {
     Ok(0)
 }
 
-pub fn update(db: &Connection, id: i32, name: &srt, phone: &str)
+pub fn update(db: &Connection, id: i32, name: &str, phone: &str)
         -> ::postgres::Result<()> {
-    let tx: ::postgres::Transaction = db.trasaction().unwrap();
+    let tx: ::postgres::Transaction = db.transaction().unwrap();
     tx.execute(
         "UPDATE phonebook SET name = $1, phone = $2 WHERE id = $3",
         &[&name, &phone, &id]).unwrap();

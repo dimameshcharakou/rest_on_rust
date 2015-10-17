@@ -6,3 +6,4 @@ authors = ["mesd"]
 [dependencies]
 postgres = "0.9"
 rust-ini = "*"
+rustc-serialize = "0.3"

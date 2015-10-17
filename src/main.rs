@@ -1,5 +1,6 @@
 extern crate postgres;
 extern crate ini;
+extern crate rustc_serialize;
 
 use postgres::{Connection, ConnectParams, ConnectTarget, SslMode, UserInfo};
 use ini::Ini;
@@ -46,22 +47,12 @@ fn params() -> (ConnectParams, SslMode) {
     (params, sslmode_)
 }
 
-struct Person {
-    id: i32,
-    name: String,
-    data: Option<Vec<u8>>
-}
-
 fn main() {
     let (params, sslmode) = params();
-    let conn =
-        Connection::connect(
-            "postgres://postgres:postgres@localhost",
-            &SslMode::None)
-        .unwrap();
+    let db = Connection::connect(params, &sslmode).unwrap();
 
-    conn.execute(
-        "CREATE TABLE IF NOT EXISTS person (
+    db.execute(
+        "CREATE TABLE IF NOT EXISTS phonebook (
             id SERIAL PRIMARY KEY,
             name VARCHAR NOT NULL,
             data BYTEA
@@ -69,27 +60,13 @@ fn main() {
         &[])
         .unwrap();
 
-    let me = Person {
-        id: 0,
-        name: "Dima".to_string(),
-        data: None
-    };
-
-    conn.execute(
-        "INSERT INTO person (name, data) VALUES ($1, $2)",
-        &[&me.name, &me.data])
-        .unwrap();
-
-    let stmt = conn.prepare("SELECT id, name, data FROM person").unwrap();
-
-    for row in stmt.query(&[]).unwrap() {
-        let person = Person {
-            id: row.get(0),
-            name: row.get(1),
-            data: row.get(2)
-        };
-        println!("Found person: {}", person.name);
-    }
+    db.execute(
+        concat!(r#"CREATE TABLE IF NOT EXISTS phonebook"#,
+                r#"("id" SERIAL PRIMARY KEY, "name" varchar(50),"#,
+                r#" "phone" varchar(100))"#,
+                ),
+        &[]
+            ).unwrap();
 
     let args: Vec<String> = std::env::args().collect();
     match args.get(1) {
@@ -112,7 +89,7 @@ fn main() {
                         .map(|s| s.parse().unwrap())
                         .collect();
 
-                    db::remove(db, &ids)
+                    db::remove(&db, &ids)
                         .unwrap();
                 },
 
@@ -122,12 +99,12 @@ fn main() {
                     }
                     let id = args[2].parse().unwrap();
 
-                    db::update(db, id, &args[3], &args[4])
+                    db::update(&db, id, &args[3], &args[4])
                         .unwrap();
                 },
 
                 "show" => {
-                    if args.let() > 3 {
+                    if args.len() > 3 {
                         panic!("Usage: phonebook show [SUBSTRING]");
                     }
                     let s;
@@ -136,7 +113,7 @@ fn main() {
                     } else {
                         s = None;
                     }
-                    let r = db::show(db, s.as_ref().map(|s| &s[..]))
+                    let r = db::show(&db, s.as_ref().map(|s| &s[..]))
                                 .unwrap();
                     db::format(&r);
                 },
